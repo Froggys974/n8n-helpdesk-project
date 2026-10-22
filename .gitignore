@@ -1,0 +1,13 @@
+n8n_encryption_key.txt
+*.txt
+
+.env
+.env.*
+
+/n8n/
+/baserow_data/
+/data/
+
+*.log
+.DS_Store
+Thumbs.db
