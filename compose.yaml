@@ -1,0 +1,43 @@
+services:
+  baserow:
+    image: baserow/baserow:2.4.1
+    container_name: baserow
+    restart: unless-stopped
+    environment:
+      - BASEROW_PUBLIC_URL=${BASEROW_PUBLIC_URL}
+    ports:
+      - "${BASEROW_EXTERNAL_PORT}:80"
+    networks:
+      - baserow-n8n
+    volumes:
+      - ./baserow_data:/baserow/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/_health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  n8n:
+    image: docker.io/n8nio/n8n:2.44.5 
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_EXTERNAL_PORT}:5678"
+    networks:
+      - baserow-n8n
+    depends_on:
+      baserow:
+        condition: service_healthy
+    environment:
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL}
+    volumes:
+      - ./n8n:/home/node/.n8n
+
+networks:
+  baserow-n8n:
+    driver: bridge
