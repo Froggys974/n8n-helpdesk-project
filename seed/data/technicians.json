@@ -1,0 +1,5 @@
+[
+  {"first_name": "Camille", "last_name": "Martin", "email": "camille.martin@northwind.local", "skills": ["hardware", "onboarding", "software"], "available": true},
+  {"first_name": "Karim", "last_name": "Benali", "email": "karim.benali@northwind.local", "skills": ["access", "software"], "available": true},
+  {"first_name": "Lucas", "last_name": "Moreau", "email": "lucas.moreau@northwind.local", "skills": ["network", "access", "hardware"], "available": true}
+]
