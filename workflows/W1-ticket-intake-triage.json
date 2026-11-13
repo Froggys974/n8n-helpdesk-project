@@ -1,0 +1,1163 @@
+{
+  "id": "d4xHa9FpwCp0t0nK",
+  "name": "W1 - Ticket Intake & AI Triage",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Demande de support IT",
+        "formDescription": "Northwind Industries — décrivez votre problème, le support IT vous répond par e-mail.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Email",
+              "fieldName": "email",
+              "fieldType": "email",
+              "placeholder": "prenom.nom@northwind.com",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Sujet",
+              "fieldName": "subject",
+              "placeholder": "Ex : VPN impossible depuis ce matin",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Description",
+              "fieldName": "description",
+              "fieldType": "textarea",
+              "placeholder": "Que se passe-t-il ? Depuis quand ? Message d'erreur ?",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Urgence ressentie",
+              "fieldName": "declared_urgency",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "low"
+                  },
+                  {
+                    "option": "medium"
+                  },
+                  {
+                    "option": "high"
+                  },
+                  {
+                    "option": "critical"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Envoyer",
+          "respondWithOptions": {
+            "values": {
+              "respondWith": "text",
+              "formSubmittedText": "Merci, votre demande a bien été reçue. Vous allez recevoir un accusé de réception par e-mail."
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8f64b132-95f7-4310-a7ed-4d95395f782c",
+      "name": "Receive-Ticket-Form",
+      "webhookId": "534d3fdd-7508-4429-a9d7-dc2f097eae1a"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cf704e1c-2ff6-4ffb-9e41-7c15e20bb55a",
+              "name": "reference",
+              "value": "={{ $env.HELPDESK_REFERENCE_PREFIX }}-{{ $now.toFormat('yyyyMMdd') }}-{{ $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "7d999377-e641-4cbc-b3d0-a4da2bfdab29",
+              "name": "email",
+              "value": "={{ $json.email.trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "f54036ef-38c0-4f2c-88b3-b423542d59e3",
+              "name": "subject",
+              "value": "={{ $json.subject.trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "42f694fb-827c-48bb-89f6-2c9a02265208",
+              "name": "description",
+              "value": "={{ $json.description.trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "783c2110-bfcd-49f4-8920-4bc018cca5c9",
+              "name": "declared_urgency",
+              "value": "={{ $json.declared_urgency }}",
+              "type": "string"
+            },
+            {
+              "id": "2e422602-56a9-4e61-b013-8ce99e800f5f",
+              "name": "submitted_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "id": "0605e47b-f1ff-41ff-a632-41926dbe8303",
+      "name": "Normalize-Request"
+    },
+    {
+      "parameters": {
+        "authentication": "databaseToken",
+        "tableId": 845,
+        "limit": 1,
+        "additionalOptions": {
+          "filters": {
+            "fields": [
+              {
+                "field": 7949,
+                "operator": "equal",
+                "value": "={{ $json.email }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "97d3140b-8a8d-42fa-81ba-477651ade961",
+      "name": "Fetch-Collaborator",
+      "credentials": {
+        "baserowTokenApi": {
+          "id": "CTWOD5mxh3lARntH",
+          "name": "Baserow Token account"
+        }
+      },
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b6b65ccc-990e-4334-a110-aa969c88ef76",
+              "leftValue": "={{ $json.id }}",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "b2a894d7-6598-4ab8-8f9c-5e467c832849",
+      "name": "Check-Collaborator-Known"
+    },
+    {
+      "parameters": {
+        "errorMessage": "=Unknown requester: {{ $('Normalize-Request').item.json.email }} is not registered in Collaborators"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        896,
+        200
+      ],
+      "id": "cc4ae16d-6450-48a6-b4bd-d4305b046d7a",
+      "name": "Reject-Unknown-Requester"
+    },
+    {
+      "parameters": {
+        "authentication": "databaseToken",
+        "tableId": 841,
+        "limit": 1,
+        "additionalOptions": {
+          "filters": {
+            "fields": [
+              {
+                "field": 7959,
+                "operator": "link_row_has",
+                "value": "={{ $json.id.toString() }}"
+              },
+              {
+                "field": 7939,
+                "operator": "equal",
+                "value": "={{ $('Normalize-Request').item.json.subject }}"
+              },
+              {
+                "field": 7981,
+                "operator": "equal",
+                "value": "1"
+              },
+              {
+                "field": 7979,
+                "operator": "date_is",
+                "value": "today",
+                "timezone": "={{ $env.GENERIC_TIMEZONE }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        -16
+      ],
+      "id": "de1cbc38-5ac8-4d40-9617-bc1385011b40",
+      "name": "Fetch-Same-Day-Duplicate",
+      "credentials": {
+        "baserowTokenApi": {
+          "id": "CTWOD5mxh3lARntH",
+          "name": "Baserow Token account"
+        }
+      },
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "91a9ed8a-f359-402b-9963-0396f6d52925",
+              "leftValue": "={{ $json.id }}",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        -16
+      ],
+      "id": "bc0b3f43-593a-4b39-9148-9ba33822b9e9",
+      "name": "Check-Duplicate-Exists"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c29a81ce-6a1c-4322-a3cb-3343d74313ac",
+              "leftValue": "={{ $json.description }}",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              },
+              "rightValue": "={{ $('Normalize-Request').item.json.description }}"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        -224
+      ],
+      "id": "4ff921f6-2d1c-416c-81cd-500cf52e6e99",
+      "name": "Check-Follow-Up-Is-New"
+    },
+    {
+      "parameters": {
+        "authentication": "databaseToken",
+        "tableId": 841,
+        "operation": "update",
+        "rowId": "={{ $json.id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": 7940,
+              "fieldValue": "={{ $json.description }}\n\n--- Relance du {{ $now.toFormat('dd/MM/yyyy HH:mm') }} ---\n{{ $('Normalize-Request').item.json.description }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1.1,
+      "position": [
+        1568,
+        -224
+      ],
+      "id": "78657f26-eb17-492c-b436-b336ef436c05",
+      "name": "Update-Duplicate-Ticket",
+      "credentials": {
+        "baserowTokenApi": {
+          "id": "CTWOD5mxh3lARntH",
+          "name": "Baserow Token account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Demande à classer :\n\nSujet : {{ $('Normalize-Request').item.json.subject }}\nDescription : {{ $('Normalize-Request').item.json.description }}\nUrgence déclarée : {{ $('Normalize-Request').item.json.declared_urgency }}\n\nDemandeur : équipe {{ $('Fetch-Collaborator').item.json.team.value }}, rôle {{ $('Fetch-Collaborator').item.json.role.value }}, site {{ $('Fetch-Collaborator').item.json.site.value }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Tu es l'agent de triage du support IT interne de Northwind Industries (PME industrielle de 220 collaborateurs, deux sites et un tiers en télétravail).\nTa seule mission est de classer une demande de support. Tu ne réponds jamais au collaborateur.\n\nCatégories possibles :\n- hardware : poste de travail, périphériques, imprimantes, commande de matériel\n- access : comptes, mots de passe, MFA, droits d'accès, authentification VPN\n- software : installation, licences, bugs applicatifs, messagerie\n- network : connectivité, Wi-Fi, réseau du site, connexion VPN instable\n- onboarding : arrivée ou départ d'un collaborateur, préparation d'un poste\n- other : tout ce qui ne rentre dans aucune catégorie ci-dessus\n\nPriorités :\n- P1 : bloque un site, une équipe entière ou la production, ou risque de sécurité\n- P2 : bloque une personne sans solution de contournement\n- P3 : gênant mais un contournement existe\n- P4 : demande d'information, de confort ou planifiable\n\nRègles :\n- L'urgence déclarée par le collaborateur est un indice, pas une vérité : base-toi sur l'impact réel décrit.\n- required_skill est la compétence technicien nécessaire, choisie parmi les mêmes valeurs que category.\n- confidence est ta certitude entre 0 et 1. Baisse-la si la demande est vague, incomplète ou ambiguë.\n- needs_human_review vaut true si la demande touche à la sécurité, à des données personnelles, à la direction, ou si elle est ambiguë.\n- summary est un résumé neutre en français de 280 caractères maximum.\n- N'invente aucune information absente de la demande."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1344,
+        0
+      ],
+      "id": "c7acfb91-2cb3-4db0-bf7d-d47233c9f709",
+      "name": "Classify-Ticket",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "options": {
+          "temperature": 0,
+          "maxRetries": 3,
+          "timeout": 60000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        224
+      ],
+      "id": "e3d839c3-4e78-4c51-8c99-a6ce7be77a8e",
+      "name": "Call-Triage-Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "ql0CQzQSeZFFOXXT",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"category\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"hardware\",\n        \"access\",\n        \"software\",\n        \"network\",\n        \"onboarding\",\n        \"other\"\n      ],\n      \"description\": \"Catégorie du ticket\"\n    },\n    \"priority\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"P1\",\n        \"P2\",\n        \"P3\",\n        \"P4\"\n      ],\n      \"description\": \"Priorité, P1 = critique\"\n    },\n    \"confidence\": {\n      \"type\": \"number\",\n      \"minimum\": 0,\n      \"maximum\": 1,\n      \"description\": \"Certitude du classement\"\n    },\n    \"summary\": {\n      \"type\": \"string\",\n      \"minLength\": 1,\n      \"maxLength\": 280,\n      \"description\": \"Résumé en français\"\n    },\n    \"required_skill\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"hardware\",\n        \"access\",\n        \"software\",\n        \"network\",\n        \"onboarding\",\n        \"other\"\n      ],\n      \"description\": \"Compétence technicien requise\"\n    },\n    \"needs_human_review\": {\n      \"type\": \"boolean\",\n      \"description\": \"Reprise humaine nécessaire\"\n    }\n  },\n  \"required\": [\n    \"category\",\n    \"priority\",\n    \"confidence\",\n    \"summary\",\n    \"required_skill\",\n    \"needs_human_review\"\n  ],\n  \"additionalProperties\": false\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1456,
+        224
+      ],
+      "id": "4956f3d8-8610-449e-9b20-0577b5128807",
+      "name": "Parse-Triage-Output"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "77b9e687-2a86-450b-9ae5-609bd5a248b1",
+              "leftValue": "={{ $json.output.confidence }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "rightValue": "={{ Number($env.HELPDESK_AI_CONFIDENCE_THRESHOLD) }}"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        -112
+      ],
+      "id": "9a5ad4de-3e83-4d12-89f4-281511ca74aa",
+      "name": "Check-AI-Confidence"
+    },
+    {
+      "parameters": {
+        "authentication": "databaseToken",
+        "tableId": 846,
+        "limit": 1,
+        "additionalOptions": {
+          "filters": {
+            "fields": [
+              {
+                "field": 7955,
+                "operator": "boolean",
+                "value": "1"
+              },
+              {
+                "field": 7953,
+                "operator": "contains",
+                "value": "={{ $json.output.required_skill }}"
+              }
+            ]
+          },
+          "order": {
+            "fields": [
+              {
+                "field": 7954,
+                "direction": ""
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1.1,
+      "position": [
+        1904,
+        -224
+      ],
+      "id": "bd3cf8b1-4bba-44b8-ab2c-a660a195a687",
+      "name": "Fetch-Qualified-Technician",
+      "credentials": {
+        "baserowTokenApi": {
+          "id": "CTWOD5mxh3lARntH",
+          "name": "Baserow Token account"
+        }
+      },
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e62cbcca-c7cd-439e-b223-df44fdc06d72",
+              "name": "triage.category",
+              "value": "={{ $('Classify-Ticket').item.json.output.category }}",
+              "type": "string"
+            },
+            {
+              "id": "4db00a6c-bcfc-41a6-a72f-d5e354baf0b9",
+              "name": "triage.priority",
+              "value": "={{ $('Classify-Ticket').item.json.output.priority }}",
+              "type": "string"
+            },
+            {
+              "id": "490b12d2-51a7-4717-85ac-dddd6b00e7c6",
+              "name": "triage.confidence",
+              "value": "={{ $('Classify-Ticket').item.json.output.confidence }}",
+              "type": "number"
+            },
+            {
+              "id": "6fa9185a-8129-47f5-80c9-352f975312f2",
+              "name": "triage.summary",
+              "value": "={{ $('Classify-Ticket').item.json.output.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "a6bd20fb-a9b2-4caa-a610-5e37556bce83",
+              "name": "triage.required_skill",
+              "value": "={{ $('Classify-Ticket').item.json.output.required_skill }}",
+              "type": "string"
+            },
+            {
+              "id": "ff7d6da7-cb56-4ed2-8a54-4a5f077bc11d",
+              "name": "triage.needs_human_review",
+              "value": "={{ $('Classify-Ticket').item.json.output.needs_human_review }}",
+              "type": "boolean"
+            },
+            {
+              "id": "ba07bae7-3bc0-4c52-ab08-d9c5d65a0f66",
+              "name": "triage.error",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "c590727b-691a-4193-9bd1-4b4ebdddc419",
+              "name": "technician.id",
+              "value": "={{ $json.id }}",
+              "type": "number"
+            },
+            {
+              "id": "9cdf238a-7e5f-4631-8567-15674d5b833d",
+              "name": "technician.email",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "3c673df9-bc61-4b96-b827-93e26b4808c1",
+              "name": "technician.name",
+              "value": "={{ [$json.first_name, $json.last_name].join(' ').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "4b6a79f2-2e67-4a41-bbdd-cc3e0c261978",
+              "name": "audit.action",
+              "value": "={{ $env.HELPDESK_AUDIT_ACTION_TRIAGED }}",
+              "type": "string"
+            },
+            {
+              "id": "63377c69-81f7-4833-853f-eae9163eb00a",
+              "name": "audit.outcome",
+              "value": "={{ $env.HELPDESK_AUDIT_OUTCOME_SUCCESS }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2128,
+        -224
+      ],
+      "id": "1925d04d-4455-4e7c-8d99-374354a263bb",
+      "name": "Set-AI-Triage"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "40a5bfb6-6534-4095-ae43-aa89f317ecbc",
+              "name": "triage.category",
+              "value": "={{ $env.HELPDESK_FALLBACK_CATEGORY }}",
+              "type": "string"
+            },
+            {
+              "id": "fff52510-f463-42cd-a8e4-8ebd02d62325",
+              "name": "triage.priority",
+              "value": "={{ $env.HELPDESK_FALLBACK_PRIORITY }}",
+              "type": "string"
+            },
+            {
+              "id": "4d6223af-6b97-441d-add0-a9b273fe7e2a",
+              "name": "triage.confidence",
+              "value": "={{ $json.output?.confidence ?? 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "d0060a2e-f6b4-4be1-9aa1-f53ea432188d",
+              "name": "triage.summary",
+              "value": "={{ $json.output?.summary ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "ecce9bf1-853c-44f9-a771-13a463cc41ec",
+              "name": "triage.required_skill",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "ae9b1ef8-8317-438f-a8e4-65aa38420cbc",
+              "name": "triage.needs_human_review",
+              "value": "={{ true }}",
+              "type": "boolean"
+            },
+            {
+              "id": "3e970a72-4d6e-46f6-81bb-7aefebd77b6e",
+              "name": "triage.error",
+              "value": "={{ $json.error ?? 'Confidence below threshold (' + $env.HELPDESK_AI_CONFIDENCE_THRESHOLD + ')' }}",
+              "type": "string"
+            },
+            {
+              "id": "68af2b25-f2d7-4eb8-a39a-0cf71ec73d3e",
+              "name": "audit.action",
+              "value": "={{ $env.HELPDESK_AUDIT_ACTION_AI_ERROR }}",
+              "type": "string"
+            },
+            {
+              "id": "bd5fffd5-d756-4b28-83b3-a0044506697a",
+              "name": "audit.outcome",
+              "value": "={{ $env.HELPDESK_AUDIT_OUTCOME_FAILURE }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2128,
+        96
+      ],
+      "id": "13c45412-8170-41f5-b3c9-587ba616a1f4",
+      "name": "Set-Fallback-Triage"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "49fe5e6d-97f0-44c4-8ced-f497326da19d",
+              "name": "due_at",
+              "value": "={{ $now.plus(Number($env['HELPDESK_SLA_HOURS_' + $json.triage.priority]), 'hours').toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "7559a012-ca3d-420d-986f-0274f382005a",
+              "name": "tags",
+              "value": "={{ $json.technician?.id && !$json.triage.needs_human_review ? '' : $env.HELPDESK_MANUAL_REVIEW_TAG }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {},
+        "includeOtherFields": true
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2352,
+        -64
+      ],
+      "id": "00003f24-f0cb-4232-83bd-2cd0cdc311f5",
+      "name": "Prepare-Ticket-Record"
+    },
+    {
+      "parameters": {
+        "authentication": "databaseToken",
+        "tableId": 841,
+        "operation": "create",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": 7927,
+              "fieldValue": "={{ $('Normalize-Request').item.json.reference }}"
+            },
+            {
+              "fieldId": 7939,
+              "fieldValue": "={{ $('Normalize-Request').item.json.subject }}"
+            },
+            {
+              "fieldId": 7940,
+              "fieldValue": "={{ $('Normalize-Request').item.json.description }}"
+            },
+            {
+              "fieldId": 7978,
+              "fieldValue": "={{ $('Normalize-Request').item.json.declared_urgency }}"
+            },
+            {
+              "fieldId": 7941,
+              "fieldValue": "={{ $json.triage.category }}"
+            },
+            {
+              "fieldId": 7956,
+              "fieldValue": "={{ $json.triage.priority }}"
+            },
+            {
+              "fieldId": 7957,
+              "fieldValue": "={{ $env.HELPDESK_TICKET_STATUS_NEW }}"
+            },
+            {
+              "fieldId": 7958,
+              "fieldValue": "={{ $json.tags }}"
+            },
+            {
+              "fieldId": 7959,
+              "fieldValue": "={{ $('Fetch-Collaborator').item.json.id }}"
+            },
+            {
+              "fieldId": 7961,
+              "fieldValue": "={{ $json.technician?.id ?? '' }}"
+            },
+            {
+              "fieldId": 7980,
+              "fieldValue": "={{ $json.due_at }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1.1,
+      "position": [
+        2576,
+        -64
+      ],
+      "id": "43139d51-7077-44e0-a76f-8255b2500641",
+      "name": "Create-Ticket",
+      "credentials": {
+        "baserowTokenApi": {
+          "id": "CTWOD5mxh3lARntH",
+          "name": "Baserow Token account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "authentication": "databaseToken",
+        "tableId": 844,
+        "operation": "create",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": 7937,
+              "fieldValue": "={{ $json.id }}"
+            },
+            {
+              "fieldId": 7938,
+              "fieldValue": "={{ $('Prepare-Ticket-Record').item.json.audit.action }}"
+            },
+            {
+              "fieldId": 7976,
+              "fieldValue": "={{ $('Prepare-Ticket-Record').item.json.audit.outcome }}"
+            },
+            {
+              "fieldId": 7975,
+              "fieldValue": "={{ JSON.stringify($('Prepare-Ticket-Record').item.json.triage, null, 2) }}"
+            },
+            {
+              "fieldId": 7982,
+              "fieldValue": "={{ $workflow.name }}"
+            },
+            {
+              "fieldId": 7983,
+              "fieldValue": "={{ $execution.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1.1,
+      "position": [
+        2800,
+        -64
+      ],
+      "id": "a74925c9-7181-4148-a9d3-665e713cea12",
+      "name": "Log-Triage-Decision",
+      "credentials": {
+        "baserowTokenApi": {
+          "id": "CTWOD5mxh3lARntH",
+          "name": "Baserow Token account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.HELPDESK_SENDER_EMAIL }}",
+        "toEmail": "={{ $('Normalize-Request').item.json.email }}",
+        "subject": "=[{{ $('Normalize-Request').item.json.reference }}] Votre demande a bien été reçue",
+        "emailFormat": "text",
+        "text": "=Bonjour {{ $('Fetch-Collaborator').item.json.first_name }},\n\nVotre demande « {{ $('Normalize-Request').item.json.subject }} » a bien été enregistrée par le support IT.\n\nRéférence : {{ $('Normalize-Request').item.json.reference }}\nCatégorie : {{ $('Prepare-Ticket-Record').item.json.triage.category }}\nPriorité : {{ $('Prepare-Ticket-Record').item.json.triage.priority }}\nTechnicien affecté : {{ $('Prepare-Ticket-Record').item.json.technician.name || \"en cours d'attribution\" }}\nPrise en charge prévue avant le : {{ DateTime.fromISO($('Prepare-Ticket-Record').item.json.due_at).toFormat('dd/MM/yyyy HH:mm') }}\n\nMerci de rappeler la référence dans vos échanges.\n\nLe support IT Northwind",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3024,
+        -64
+      ],
+      "id": "6e1d6b49-0639-4559-8212-9f1be5fca100",
+      "name": "Notify-Requester",
+      "credentials": {
+        "smtp": {
+          "id": "MailpitSmtp00001",
+          "name": "Mailpit SMTP"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "webhookId": "e7490a85-2c37-40f7-bdd5-8d0d9096fcef"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8531c0d7-9f28-4bc4-86f1-ba6ca38c2030",
+              "leftValue": "={{ $('Prepare-Ticket-Record').item.json.technician.id }}",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3248,
+        -64
+      ],
+      "id": "e8763150-f34f-4a44-a755-c9f1e9e63419",
+      "name": "Check-Technician-Assigned"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.HELPDESK_SENDER_EMAIL }}",
+        "toEmail": "={{ $('Prepare-Ticket-Record').item.json.technician.email }}",
+        "subject": "={{ $('Prepare-Ticket-Record').item.json.triage.priority === 'P1' ? '[URGENT P1] ' : '' }}[{{ $('Normalize-Request').item.json.reference }}] Nouveau ticket : {{ $('Normalize-Request').item.json.subject }}",
+        "emailFormat": "text",
+        "text": "=Bonjour {{ $('Prepare-Ticket-Record').item.json.technician.name }},\n\nUn nouveau ticket vous a été attribué.\n\nRéférence : {{ $('Normalize-Request').item.json.reference }}\nPriorité : {{ $('Prepare-Ticket-Record').item.json.triage.priority }}\nCatégorie : {{ $('Prepare-Ticket-Record').item.json.triage.category }}\nÉchéance SLA : {{ DateTime.fromISO($('Prepare-Ticket-Record').item.json.due_at).toFormat('dd/MM/yyyy HH:mm') }}\n\nDemandeur : {{ $('Fetch-Collaborator').item.json.first_name }} {{ $('Fetch-Collaborator').item.json.last_name }} ({{ $('Normalize-Request').item.json.email }})\nÉquipe / site : {{ $('Fetch-Collaborator').item.json.team.value }} / {{ $('Fetch-Collaborator').item.json.site.value }}\nUrgence déclarée : {{ $('Normalize-Request').item.json.declared_urgency }}\n\nSujet : {{ $('Normalize-Request').item.json.subject }}\nRésumé IA (confiance {{ $('Prepare-Ticket-Record').item.json.triage.confidence }}) : {{ $('Prepare-Ticket-Record').item.json.triage.summary }}\n\nDescription :\n{{ $('Normalize-Request').item.json.description }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3472,
+        -160
+      ],
+      "id": "fe4d8608-901b-47d7-b3af-53d22eb80a19",
+      "name": "Notify-Technician",
+      "credentials": {
+        "smtp": {
+          "id": "MailpitSmtp00001",
+          "name": "Mailpit SMTP"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "webhookId": "1403eb6a-2b63-4102-9638-80af1fb5c4de"
+    }
+  ],
+  "connections": {
+    "Receive-Ticket-Form": {
+      "main": [
+        [
+          {
+            "node": "Normalize-Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize-Request": {
+      "main": [
+        [
+          {
+            "node": "Fetch-Collaborator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch-Collaborator": {
+      "main": [
+        [
+          {
+            "node": "Check-Collaborator-Known",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check-Collaborator-Known": {
+      "main": [
+        [
+          {
+            "node": "Fetch-Same-Day-Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject-Unknown-Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch-Same-Day-Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Check-Duplicate-Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check-Duplicate-Exists": {
+      "main": [
+        [
+          {
+            "node": "Check-Follow-Up-Is-New",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Classify-Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check-Follow-Up-Is-New": {
+      "main": [
+        [
+          {
+            "node": "Update-Duplicate-Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call-Triage-Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Classify-Ticket",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse-Triage-Output": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Classify-Ticket",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify-Ticket": {
+      "main": [
+        [
+          {
+            "node": "Check-AI-Confidence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set-Fallback-Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check-AI-Confidence": {
+      "main": [
+        [
+          {
+            "node": "Fetch-Qualified-Technician",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set-Fallback-Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch-Qualified-Technician": {
+      "main": [
+        [
+          {
+            "node": "Set-AI-Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set-AI-Triage": {
+      "main": [
+        [
+          {
+            "node": "Prepare-Ticket-Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set-Fallback-Triage": {
+      "main": [
+        [
+          {
+            "node": "Prepare-Ticket-Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare-Ticket-Record": {
+      "main": [
+        [
+          {
+            "node": "Create-Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create-Ticket": {
+      "main": [
+        [
+          {
+            "node": "Log-Triage-Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log-Triage-Decision": {
+      "main": [
+        [
+          {
+            "node": "Notify-Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify-Requester": {
+      "main": [
+        [
+          {
+            "node": "Check-Technician-Assigned",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check-Technician-Assigned": {
+      "main": [
+        [
+          {
+            "node": "Notify-Technician",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timezone": "Europe/Paris",
+    "errorWorkflow": "W0ErrorHandler01"
+  },
+  "pinData": {},
+  "active": false
+}

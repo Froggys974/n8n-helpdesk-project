@@ -1,0 +1,66 @@
+{
+  "id": "W0ErrorHandler01",
+  "name": "W0 - Global Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "70c17bf9-8989-4c6c-8e0c-811193a19315",
+      "name": "Receive-Workflow-Error"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.HELPDESK_SENDER_EMAIL }}",
+        "toEmail": "={{ $env.HELPDESK_ADMIN_EMAIL }}",
+        "subject": "=[n8n] Échec de « {{ $json.workflow.name }} » sur {{ $json.execution.lastNodeExecuted }}",
+        "emailFormat": "text",
+        "text": "=Une exécution a échoué.\n\nWorkflow : {{ $json.workflow.name }} ({{ $json.workflow.id }})\nExécution : {{ $json.execution.id }} (mode {{ $json.execution.mode }})\nDernier nœud exécuté : {{ $json.execution.lastNodeExecuted }}\nErreur : {{ $json.execution.error.message }}\nDate : {{ $now.toFormat('dd/MM/yyyy HH:mm:ss') }}\n\nVoir l'exécution : {{ $json.execution.url }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "3c118d1f-aa7a-4a5c-9d8a-e76cc8d78a2d",
+      "name": "Notify-Admin-Of-Failure",
+      "credentials": {
+        "smtp": {
+          "id": "MailpitSmtp00001",
+          "name": "Mailpit SMTP"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "webhookId": "a626bd78-a652-4f82-b45c-249ebb7614b1"
+    }
+  ],
+  "connections": {
+    "Receive-Workflow-Error": {
+      "main": [
+        [
+          {
+            "node": "Notify-Admin-Of-Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Paris"
+  },
+  "pinData": {},
+  "active": false
+}

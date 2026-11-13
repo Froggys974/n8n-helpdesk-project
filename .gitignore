@@ -3,7 +3,7 @@ n8n_encryption_key.txt
 
 .env
 .env.*
-!.env.sample
+!.env.example
 
 /n8n/
 /baserow_data/

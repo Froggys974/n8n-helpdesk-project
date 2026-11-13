@@ -1,0 +1,12 @@
+[
+  {"first_name": "Claire", "last_name": "Dubois", "email": "claire.dubois@northwind.local", "team": "finance", "role": "manager", "site": "headquarters"},
+  {"first_name": "Julien", "last_name": "Lefevre", "email": "julien.lefevre@northwind.local", "team": "production", "role": "employee", "site": "plant"},
+  {"first_name": "Sophie", "last_name": "Garnier", "email": "sophie.garnier@northwind.local", "team": "sales", "role": "employee", "site": "remote"},
+  {"first_name": "Thomas", "last_name": "Roux", "email": "thomas.roux@northwind.local", "team": "logistics", "role": "manager", "site": "plant"},
+  {"first_name": "Amina", "last_name": "Diallo", "email": "amina.diallo@northwind.local", "team": "hr", "role": "employee", "site": "headquarters"},
+  {"first_name": "Nicolas", "last_name": "Fontaine", "email": "nicolas.fontaine@northwind.local", "team": "sales", "role": "executive", "site": "headquarters"},
+  {"first_name": "Emma", "last_name": "Petit", "email": "emma.petit@northwind.local", "team": "production", "role": "employee", "site": "plant"},
+  {"first_name": "Hugo", "last_name": "Mercier", "email": "hugo.mercier@northwind.local", "team": "finance", "role": "employee", "site": "remote"},
+  {"first_name": "Lea", "last_name": "Bonnet", "email": "lea.bonnet@northwind.local", "team": "logistics", "role": "employee", "site": "remote"},
+  {"first_name": "Marc", "last_name": "Chevalier", "email": "marc.chevalier@northwind.local", "team": "it", "role": "manager", "site": "headquarters"}
+]

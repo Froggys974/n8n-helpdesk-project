@@ -6,6 +6,8 @@ services:
     stop_grace_period: 120s
     environment:
       - BASEROW_PUBLIC_URL=${BASEROW_PUBLIC_URL}
+      # Lets n8n reach the API over the Docker network (Host: baserow).
+      - BASEROW_EXTRA_PUBLIC_URLS=http://baserow
       - BASEROW_POSTGRES_STARTUP_CHECK_ATTEMPTS=150
     ports:
       - "${BASEROW_EXTERNAL_PORT}:80"
@@ -14,14 +16,21 @@ services:
     volumes:
       - ./baserow_data:/baserow/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://baserow/api/_health/"]
+      test: ["CMD", "curl", "-f", "http://localhost/api/_health/"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 600s
 
+  # Docker creates missing bind-mount dirs as root; n8n runs as uid 1000.
+  n8n-init:
+    image: alpine:3.20
+    command: ["chown", "-R", "1000:1000", "/data"]
+    volumes:
+      - ./n8n:/data
+
   n8n:
-    image: docker.io/n8nio/n8n:2.44.5 
+    image: docker.io/n8nio/n8n:2.44.5
     container_name: n8n
     restart: unless-stopped
     ports:
@@ -29,17 +38,58 @@ services:
     networks:
       - baserow-n8n
     depends_on:
+      n8n-init:
+        condition: service_completed_successfully
       baserow:
         condition: service_healthy
     environment:
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # Key is read from a Docker secret so it never shows up in $env.
+      - N8N_ENCRYPTION_KEY_FILE=/run/secrets/n8n_encryption_key
       - N8N_HOST=${N8N_HOST}
       - N8N_PORT=5678
       - N8N_PROTOCOL=${N8N_PROTOCOL}
       - WEBHOOK_URL=${N8N_WEBHOOK_URL}
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-Europe/Paris}
+      # Business settings are read in workflows through $env (no $vars without a license).
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - HELPDESK_REFERENCE_PREFIX=${HELPDESK_REFERENCE_PREFIX:-TCK}
+      - HELPDESK_SENDER_EMAIL=${HELPDESK_SENDER_EMAIL:-helpdesk@northwind.local}
+      - HELPDESK_ADMIN_EMAIL=${HELPDESK_ADMIN_EMAIL:-it-admin@northwind.local}
+      - HELPDESK_AI_CONFIDENCE_THRESHOLD=${HELPDESK_AI_CONFIDENCE_THRESHOLD:-0.6}
+      - HELPDESK_FALLBACK_CATEGORY=${HELPDESK_FALLBACK_CATEGORY:-other}
+      - HELPDESK_FALLBACK_PRIORITY=${HELPDESK_FALLBACK_PRIORITY:-P3}
+      - HELPDESK_MANUAL_REVIEW_TAG=${HELPDESK_MANUAL_REVIEW_TAG:-manual_review}
+      - HELPDESK_SLA_HOURS_P1=${HELPDESK_SLA_HOURS_P1:-4}
+      - HELPDESK_SLA_HOURS_P2=${HELPDESK_SLA_HOURS_P2:-8}
+      - HELPDESK_SLA_HOURS_P3=${HELPDESK_SLA_HOURS_P3:-24}
+      - HELPDESK_SLA_HOURS_P4=${HELPDESK_SLA_HOURS_P4:-72}
+      - HELPDESK_TICKET_STATUS_NEW=${HELPDESK_TICKET_STATUS_NEW:-new}
+      - HELPDESK_TICKET_STATUS_LATE=${HELPDESK_TICKET_STATUS_LATE:-late}
+      - HELPDESK_SLA_WARNING_HOURS=${HELPDESK_SLA_WARNING_HOURS:-1}
+      - HELPDESK_AUDIT_ACTION_TRIAGED=${HELPDESK_AUDIT_ACTION_TRIAGED:-triaged}
+      - HELPDESK_AUDIT_ACTION_AI_ERROR=${HELPDESK_AUDIT_ACTION_AI_ERROR:-ai_error}
+      - HELPDESK_AUDIT_ACTION_SLA_REMINDER=${HELPDESK_AUDIT_ACTION_SLA_REMINDER:-sla_reminder}
+      - HELPDESK_AUDIT_OUTCOME_SUCCESS=${HELPDESK_AUDIT_OUTCOME_SUCCESS:-success}
+      - HELPDESK_AUDIT_OUTCOME_FAILURE=${HELPDESK_AUDIT_OUTCOME_FAILURE:-failure}
+    secrets:
+      - n8n_encryption_key
     volumes:
       - ./n8n:/home/node/.n8n
+
+  # Local SMTP sink: every e-mail sent by n8n is visible on http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.27
+    container_name: mailpit
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_EXTERNAL_PORT:-8025}:8025"
+    networks:
+      - baserow-n8n
 
 networks:
   baserow-n8n:
     driver: bridge
+
+secrets:
+  n8n_encryption_key:
+    file: ./n8n_encryption_key.txt

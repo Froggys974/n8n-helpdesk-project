@@ -1,0 +1,398 @@
+{
+  "id": "W3SlaReminders01",
+  "name": "W3 - SLA Reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7c185250-beb0-4c4b-9922-2018e187ca76",
+      "name": "Run-Every-Hour"
+    },
+    {
+      "parameters": {
+        "authentication": "databaseToken",
+        "tableId": 841,
+        "returnAll": true,
+        "additionalOptions": {
+          "filters": {
+            "fields": [
+              {
+                "field": 7981,
+                "operator": "equal",
+                "value": "1"
+              },
+              {
+                "field": 7957,
+                "operator": "contains_not",
+                "value": "={{ $env.HELPDESK_TICKET_STATUS_LATE }}"
+              },
+              {
+                "field": 7980,
+                "operator": "not_empty",
+                "value": ""
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "fc3c2b65-3c99-42ca-9f8c-ef35d7c2d569",
+      "name": "Fetch-Open-Tickets",
+      "credentials": {
+        "baserowTokenApi": {
+          "id": "CTWOD5mxh3lARntH",
+          "name": "Baserow Token account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "808a76df-d11b-4b77-a3a9-864c0347d1cf",
+              "leftValue": "={{ DateTime.fromISO($json.due_at) }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              },
+              "rightValue": "={{ $now.plus(Number($env.HELPDESK_SLA_WARNING_HOURS), 'hours') }}"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "9ad503c6-c685-4de2-a72a-cae352020838",
+      "name": "Filter-SLA-At-Risk"
+    },
+    {
+      "parameters": {
+        "authentication": "databaseToken",
+        "tableId": 841,
+        "operation": "update",
+        "rowId": "={{ $json.id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": 7957,
+              "fieldValue": "={{ $env.HELPDESK_TICKET_STATUS_LATE }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        0
+      ],
+      "id": "40a1cdb7-b980-42e6-8169-d0fe86dda185",
+      "name": "Mark-Ticket-Late",
+      "credentials": {
+        "baserowTokenApi": {
+          "id": "CTWOD5mxh3lARntH",
+          "name": "Baserow Token account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "authentication": "databaseToken",
+        "tableId": 844,
+        "operation": "create",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": 7937,
+              "fieldValue": "={{ $json.id }}"
+            },
+            {
+              "fieldId": 7938,
+              "fieldValue": "={{ $env.HELPDESK_AUDIT_ACTION_SLA_REMINDER }}"
+            },
+            {
+              "fieldId": 7976,
+              "fieldValue": "={{ $env.HELPDESK_AUDIT_OUTCOME_SUCCESS }}"
+            },
+            {
+              "fieldId": 7975,
+              "fieldValue": "={{ JSON.stringify({ reference: $json.reference, priority: $json.priority.value, previous_status: $('Filter-SLA-At-Risk').item.json.status.value, due_at: $json.due_at, assigned: $json.technicians.length > 0, batch_position: $itemIndex + 1, batch_size: $input.all().length }, null, 2) }}"
+            },
+            {
+              "fieldId": 7982,
+              "fieldValue": "={{ $workflow.name }}"
+            },
+            {
+              "fieldId": 7983,
+              "fieldValue": "={{ $execution.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        0
+      ],
+      "id": "0453aa70-c1a8-44af-951e-d87adc7e3d94",
+      "name": "Log-SLA-Reminder",
+      "credentials": {
+        "baserowTokenApi": {
+          "id": "CTWOD5mxh3lARntH",
+          "name": "Baserow Token account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d745ce1c-0067-4723-acaa-aff1dfbf71b5",
+              "leftValue": "={{ $('Mark-Ticket-Late').item.json.technicians }}",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "d6831022-38a9-4ec2-9ade-837f9c76fda9",
+      "name": "Check-Technician-Assigned"
+    },
+    {
+      "parameters": {
+        "authentication": "databaseToken",
+        "tableId": 846,
+        "operation": "get",
+        "rowId": "={{ $('Mark-Ticket-Late').item.json.technicians[0].id }}"
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        -112
+      ],
+      "id": "2ea946a4-d0b5-41f3-9fb5-5b0d3ba8e93f",
+      "name": "Fetch-Assigned-Technician",
+      "credentials": {
+        "baserowTokenApi": {
+          "id": "CTWOD5mxh3lARntH",
+          "name": "Baserow Token account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.HELPDESK_SENDER_EMAIL }}",
+        "toEmail": "={{ $json.email }}",
+        "subject": "=[SLA] {{ $('Mark-Ticket-Late').item.json.reference }} en retard : {{ $('Mark-Ticket-Late').item.json.subject }}",
+        "emailFormat": "text",
+        "text": "=Bonjour {{ $json.first_name }},\n\nLe ticket {{ $('Mark-Ticket-Late').item.json.reference }} qui vous est attribué a dépassé (ou va dépasser) son délai de prise en charge.\n\nSujet : {{ $('Mark-Ticket-Late').item.json.subject }}\nPriorité : {{ $('Mark-Ticket-Late').item.json.priority.value }}\nÉchéance SLA : {{ DateTime.fromISO($('Mark-Ticket-Late').item.json.due_at).setZone($env.GENERIC_TIMEZONE).toFormat('dd/MM/yyyy HH:mm') }}\n\nLe ticket est passé au statut « {{ $('Mark-Ticket-Late').item.json.status.value }} ». Merci de le traiter en priorité.\n\nLe support IT Northwind",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1568,
+        -112
+      ],
+      "id": "82a9a7a7-630c-4c2e-af7d-0cbdd25a9a03",
+      "name": "Notify-Technician-SLA",
+      "credentials": {
+        "smtp": {
+          "id": "MailpitSmtp00001",
+          "name": "Mailpit SMTP"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "webhookId": "b2b06f84-df2e-43af-b96d-d9bb491ec46d"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.HELPDESK_SENDER_EMAIL }}",
+        "toEmail": "={{ $env.HELPDESK_ADMIN_EMAIL }}",
+        "subject": "=[SLA] {{ $('Mark-Ticket-Late').item.json.reference }} en retard et non attribué",
+        "emailFormat": "text",
+        "text": "=Le ticket {{ $('Mark-Ticket-Late').item.json.reference }} n'est attribué à aucun technicien et a dépassé (ou va dépasser) son SLA.\n\nSujet : {{ $('Mark-Ticket-Late').item.json.subject }}\nPriorité : {{ $('Mark-Ticket-Late').item.json.priority.value }}\nTags : {{ $('Mark-Ticket-Late').item.json.tags.map(tag => tag.value).join(', ') || 'aucun' }}\nÉchéance SLA : {{ DateTime.fromISO($('Mark-Ticket-Late').item.json.due_at).setZone($env.GENERIC_TIMEZONE).toFormat('dd/MM/yyyy HH:mm') }}\n\nMerci de l'attribuer manuellement dans Baserow.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1344,
+        112
+      ],
+      "id": "a5a1d895-81b3-4bcd-b32e-f12fcdf16927",
+      "name": "Notify-Admin-Unassigned-Late",
+      "credentials": {
+        "smtp": {
+          "id": "MailpitSmtp00001",
+          "name": "Mailpit SMTP"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "webhookId": "09c07309-f3fa-4d38-8a28-97fff8c13a5a"
+    }
+  ],
+  "connections": {
+    "Run-Every-Hour": {
+      "main": [
+        [
+          {
+            "node": "Fetch-Open-Tickets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch-Open-Tickets": {
+      "main": [
+        [
+          {
+            "node": "Filter-SLA-At-Risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter-SLA-At-Risk": {
+      "main": [
+        [
+          {
+            "node": "Mark-Ticket-Late",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark-Ticket-Late": {
+      "main": [
+        [
+          {
+            "node": "Log-SLA-Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log-SLA-Reminder": {
+      "main": [
+        [
+          {
+            "node": "Check-Technician-Assigned",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check-Technician-Assigned": {
+      "main": [
+        [
+          {
+            "node": "Fetch-Assigned-Technician",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify-Admin-Unassigned-Late",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch-Assigned-Technician": {
+      "main": [
+        [
+          {
+            "node": "Notify-Technician-SLA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Paris",
+    "errorWorkflow": "W0ErrorHandler01"
+  },
+  "pinData": {},
+  "active": false
+}
